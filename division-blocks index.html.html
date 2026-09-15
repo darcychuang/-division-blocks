@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>除法與因數積木教具</title>
+<style>
+  :root{
+    --bg:#F5F5F3;
+    --panel-bg:#FBFBFA;
+    --border:#DDDAD3;
+    --text:#3A3A38;
+    --text-light:#8A8782;
+    --block-color:#9FB4C7;
+    --block-color-dark:#7E97AC;
+    --ring-full-border:#6E8B99;
+    --ring-remainder-border:#B0AEA9;
+    --accent:#D9A066;
+    --slot-bg:#EFEEEA;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;height:100%;
+    font-family:"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+  #app{display:flex;flex-direction:column;height:100%;min-height:100vh;}
+
+  header{
+    padding:14px 20px 10px;
+    border-bottom:1px solid var(--border);
+    background:var(--panel-bg);
+  }
+  header h1{
+    font-size:18px;
+    margin:0 0 12px 0;
+    font-weight:600;
+    letter-spacing:0.5px;
+  }
+  .control-row{
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:10px 18px;
+    margin-bottom:10px;
+  }
+  .control-row:last-child{margin-bottom:0;}
+  .control-label{
+    font-size:13px;
+    color:var(--text-light);
+    white-space:nowrap;
+  }
+  input[type="number"]{
+    width:64px;
+    padding:6px 8px;
+    border:1px solid var(--border);
+    border-radius:6px;
+    font-size:14px;
+    background:#fff;
+    color:var(--text);
+  }
+  .shape-btn, .divisor-btn, .action-btn{
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--text);
+    padding:6px 12px;
+    border-radius:6px;
+    font-size:14px;
+    cursor:pointer;
+    transition:background .15s, border-color .15s, color .15s;
+  }
+  .shape-btn:hover, .divisor-btn:hover, .action-btn:hover{border-color:var(--block-color-dark);}
+  .shape-btn.active, .divisor-btn.active{
+    background:var(--block-color);
+    border-color:var(--block-color-dark);
+    color:#fff;
+  }
+  .action-btn.primary{
+    background:var(--ring-full-border);
+    border-color:var(--ring-full-border);
+    color:#fff;
+  }
+  .action-btn.primary:hover{opacity:.9;}
+  .action-btn.ghost{
+    background:transparent;
+  }
+  .divisor-list{display:flex;flex-wrap:wrap;gap:6px;}
+
+  main{
+    flex:1;
+    display:flex;
+    gap:0;
+    min-height:0;
+  }
+  .panel{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    min-width:0;
+    padding:16px 18px;
+  }
+  #left-area{border-right:1px solid var(--border);}
+  .panel h2{
+    font-size:14px;
+    font-weight:600;
+    color:var(--text-light);
+    margin:0 0 12px 0;
+  }
+
+  #blocks-container{
+    display:flex;
+    flex-wrap:wrap;
+    align-content:flex-start;
+    gap:8px;
+    min-height:80px;
+  }
+
+  #groups-area{
+    display:flex;
+    flex-wrap:wrap;
+    align-content:flex-start;
+    gap:16px 20px;
+    min-height:80px;
+  }
+
+  .group-ring{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:10px 14px;
+    border-radius:999px;
+    background:rgba(255,255,255,0.5);
+    cursor:grab;
+    user-select:none;
+    touch-action:none;
+  }
+  .group-full{
+    border:2.5px solid var(--ring-full-border);
+  }
+  .group-remainder{
+    border:2.5px dashed var(--ring-remainder-border);
+  }
+  .group-ring.dragging{
+    cursor:grabbing;
+    box-shadow:0 6px 16px rgba(0,0,0,0.15);
+    opacity:0.95;
+  }
+  .group-ring.placed{
+    cursor:default;
+  }
+
+  #app{ --block-size:30px; }
+  .block{
+    width:var(--block-size);
+    height:var(--block-size);
+    background:var(--block-color);
+    flex-shrink:0;
+  }
+  .block-square{border-radius:4px;}
+  .block-circle{border-radius:50%;}
+  .block-triangle{
+    width:calc(var(--block-size) + 2px);height:calc(var(--block-size) + 2px);
+    background:transparent;
+    clip-path:polygon(50% 6%, 6% 94%, 94% 94%);
+    background-color:var(--block-color);
+  }
+  #size-warning{
+    font-size:12px;
+    color:var(--text-light);
+    display:none;
+  }
+  #size-warning.show{display:block;}
+
+  #right-area{background:var(--panel-bg);}
+
+  #slots-wrap{
+    display:flex;
+    flex-wrap:wrap;
+    gap:14px;
+    margin-bottom:18px;
+  }
+  .slot{
+    width:64px;
+    height:56px;
+    border:1.5px dashed var(--border);
+    border-radius:999px;
+    background:var(--slot-bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .slot.filled{
+    border-style:solid;
+    border-color:var(--ring-full-border);
+    background:transparent;
+  }
+  .slot .group-ring{padding:6px 10px;gap:4px;}
+  .slot .block{width:20px;height:20px;}
+  .slot .block-triangle{width:22px;height:22px;}
+
+  #remainder-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:20px;
+  }
+  #remainder-row.hidden{display:none;}
+  #remainder-slot{
+    min-width:74px;
+    height:56px;
+    padding:0 10px;
+    border:1.5px dashed var(--ring-remainder-border);
+    border-radius:999px;
+    background:var(--slot-bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  #remainder-slot.filled{background:transparent;}
+  #remainder-slot .block{width:20px;height:20px;}
+  #remainder-slot .block-triangle{width:22px;height:22px;}
+  #remainder-label{font-size:13px;color:var(--text-light);}
+
+  #counter-line{
+    font-size:14px;
+    color:var(--text-light);
+    margin-bottom:16px;
+  }
+  #counter-line b{color:var(--text);}
+
+  #equation-display{
+    font-size:28px;
+    font-weight:600;
+    padding:16px 20px;
+    border-radius:10px;
+    background:var(--slot-bg);
+    display:inline-block;
+    letter-spacing:1px;
+    transition:background .3s, box-shadow .3s;
+  }
+  #equation-display.complete{
+    background:#F3E6D3;
+    box-shadow:0 0 0 2px var(--accent) inset;
+  }
+
+  .shape-btn, .divisor-btn, .action-btn{
+    min-height:40px;
+    padding:8px 14px;
+  }
+  .divisor-btn{
+    min-width:40px;
+  }
+
+  @media (max-width:480px){
+    main{flex-direction:column;}
+    #left-area{border-right:none;border-bottom:1px solid var(--border);}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>除法與因數積木教具</h1>
+    <div class="control-row">
+      <span class="control-label">總數量</span>
+      <input type="number" id="n-input" min="1" max="200" value="12">
+      <span class="control-label">積木形狀</span>
+      <button class="shape-btn active" data-shape="square">方塊</button>
+      <button class="shape-btn" data-shape="circle">圓形</button>
+      <button class="shape-btn" data-shape="triangle">三角形</button>
+      <button class="action-btn primary" id="new-round-btn">出題</button>
+      <button class="action-btn primary" id="settle-btn">結算</button>
+    </div>
+    <div class="control-row">
+      <span id="size-warning">數量較大時，積木會自動縮小顯示以便排列。建議教學情境仍以 100 以內較容易觀察分組規律。</span>
+    </div>
+    <div class="control-row">
+      <span class="control-label">要分成每幾個一組？</span>
+      <div class="divisor-list" id="divisor-list"></div>
+      <input type="number" id="m-input" min="1" max="40" placeholder="其他數字">
+      <button class="action-btn primary" id="group-btn">分組</button>
+      <button class="action-btn ghost" id="reset-btn">重新分組</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="left-area" class="panel">
+      <h2>操作區</h2>
+      <div id="blocks-container"></div>
+      <div id="groups-area"></div>
+    </section>
+
+    <section id="right-area" class="panel">
+      <h2>結算區</h2>
+      <div id="slots-wrap"></div>
+      <div id="remainder-row" class="hidden">
+        <div id="remainder-slot"></div>
+        <span id="remainder-label"></span>
+      </div>
+      <div id="counter-line">已放入 <b id="placed-count">0</b> 組</div>
+      <div id="equation-display">請先「出題」並「分組」</div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  var N = 12, M = null, shape = 'square';
+  var fullGroups = 0, remainder = 0, placedGroups = 0, remainderPlaced = false;
+
+  var nInput = document.getElementById('n-input');
+  var mInput = document.getElementById('m-input');
+  var divisorList = document.getElementById('divisor-list');
+  var blocksContainer = document.getElementById('blocks-container');
+  var groupsArea = document.getElementById('groups-area');
+  var slotsWrap = document.getElementById('slots-wrap');
+  var remainderRow = document.getElementById('remainder-row');
+  var remainderSlot = document.getElementById('remainder-slot');
+  var remainderLabel = document.getElementById('remainder-label');
+  var placedCountEl = document.getElementById('placed-count');
+  var equationDisplay = document.getElementById('equation-display');
+
+  // ---- shape buttons ----
+  document.querySelectorAll('.shape-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.shape-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      shape = btn.dataset.shape;
+    });
+  });
+
+  // ---- divisor quick buttons 1-12 ----
+  for(var d=1; d<=12; d++){
+    (function(d){
+      var b = document.createElement('button');
+      b.className = 'divisor-btn';
+      b.textContent = d;
+      b.addEventListener('click', function(){
+        document.querySelectorAll('.divisor-btn').forEach(function(x){ x.classList.remove('active'); });
+        b.classList.add('active');
+        mInput.value = '';
+        M = d;
+      });
+      divisorList.appendChild(b);
+    })(d);
+  }
+  mInput.addEventListener('input', function(){
+    if(mInput.value){
+      document.querySelectorAll('.divisor-btn').forEach(function(x){ x.classList.remove('active'); });
+      M = parseInt(mInput.value, 10);
+    }
+  });
+
+  // ---- 出題：產生 N 個未分組積木 ----
+  var appEl = document.getElementById('app');
+  var sizeWarning = document.getElementById('size-warning');
+
+  function applyBlockSize(){
+    var size = 30;
+    if(N > 150) size = 10;
+    else if(N > 80) size = 14;
+    else if(N > 40) size = 20;
+    appEl.style.setProperty('--block-size', size + 'px');
+    sizeWarning.classList.toggle('show', N > 60);
+  }
+
+  function newRound(){
+    N = Math.max(1, Math.min(200, parseInt(nInput.value,10) || 12));
+    nInput.value = N;
+    applyBlockSize();
+    M = null;
+    mInput.value = '';
+    document.querySelectorAll('.divisor-btn').forEach(function(x){ x.classList.remove('active'); });
+
+    blocksContainer.innerHTML = '';
+    groupsArea.innerHTML = '';
+    slotsWrap.innerHTML = '';
+    remainderRow.classList.add('hidden');
+    remainderSlot.innerHTML = '';
+    remainderSlot.classList.remove('filled');
+    placedGroups = 0; remainder = 0; fullGroups = 0; remainderPlaced = false;
+    placedCountEl.textContent = '0';
+    equationDisplay.textContent = '請選擇要分成每幾個一組，再按「分組」';
+    equationDisplay.classList.remove('complete');
+
+    for(var i=0;i<N;i++){
+      blocksContainer.appendChild(makeBlockEl());
+    }
+  }
+
+  function makeBlockEl(){
+    var el = document.createElement('div');
+    el.className = 'block block-' + shape;
+    return el;
+  }
+
+  // ---- 分組 ----
+  function doGrouping(){
+    if(!M || M < 1){
+      equationDisplay.textContent = '請先選擇一個除數（要分成每幾個一組）';
+      return;
+    }
+    fullGroups = Math.floor(N / M);
+    remainder = N % M;
+    placedGroups = 0;
+    remainderPlaced = false;
+    placedCountEl.textContent = '0';
+
+    blocksContainer.innerHTML = '';
+    groupsArea.innerHTML = '';
+    slotsWrap.innerHTML = '';
+    remainderSlot.innerHTML = '';
+    remainderSlot.classList.remove('filled');
+
+    for(var g=0; g<fullGroups; g++){
+      groupsArea.appendChild(makeGroupRing(M, 'full'));
+    }
+    if(remainder > 0){
+      groupsArea.appendChild(makeGroupRing(remainder, 'remainder'));
+      remainderRow.classList.remove('hidden');
+      remainderLabel.textContent = '餘數格（餘 ' + remainder + ' 個）';
+    } else {
+      remainderRow.classList.add('hidden');
+    }
+
+    for(var s=0; s<fullGroups; s++){
+      var slot = document.createElement('div');
+      slot.className = 'slot';
+      slotsWrap.appendChild(slot);
+    }
+
+    updateEquation();
+  }
+
+  function makeGroupRing(count, type){
+    var ring = document.createElement('div');
+    ring.className = 'group-ring ' + (type === 'full' ? 'group-full' : 'group-remainder');
+    ring.dataset.type = type;
+    for(var i=0;i<count;i++){
+      ring.appendChild(makeBlockEl());
+    }
+    attachDrag(ring);
+    return ring;
+  }
+
+  // ---- 重新分組（保留 N 與形狀，回到未分組狀態）----
+  function resetGrouping(){
+    blocksContainer.innerHTML = '';
+    groupsArea.innerHTML = '';
+    slotsWrap.innerHTML = '';
+    remainderRow.classList.add('hidden');
+    remainderSlot.innerHTML = '';
+    placedGroups = 0; remainder = 0; fullGroups = 0; remainderPlaced = false;
+    placedCountEl.textContent = '0';
+    equationDisplay.textContent = '請選擇要分成每幾個一組，再按「分組」';
+    equationDisplay.classList.remove('complete');
+    for(var i=0;i<N;i++){
+      blocksContainer.appendChild(makeBlockEl());
+    }
+  }
+
+  // ---- 拖曳（Pointer Events，滑鼠與觸控通用） ----
+  function attachDrag(ring){
+    var startX, startY, offsetX, offsetY, originParent, originNext;
+    var dragging = false;
+
+    ring.addEventListener('pointerdown', function(e){
+      if(ring.classList.contains('placed')) return;
+      dragging = true;
+      ring.setPointerCapture(e.pointerId);
+      var rect = ring.getBoundingClientRect();
+      offsetX = e.clientX - rect.left;
+      offsetY = e.clientY - rect.top;
+      originParent = ring.parentElement;
+      originNext = ring.nextSibling;
+      document.body.appendChild(ring);
+      ring.style.position = 'fixed';
+      ring.style.left = rect.left + 'px';
+      ring.style.top = rect.top + 'px';
+      ring.style.zIndex = 1000;
+      ring.classList.add('dragging');
+    });
+
+    ring.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      ring.style.left = (e.clientX - offsetX) + 'px';
+      ring.style.top = (e.clientY - offsetY) + 'px';
+    });
+
+    ring.addEventListener('pointerup', function(e){
+      if(!dragging) return;
+      dragging = false;
+      ring.classList.remove('dragging');
+      var dropX = e.clientX, dropY = e.clientY;
+      var handled = false;
+
+      if(ring.dataset.type === 'remainder'){
+        var remRect = remainderSlot.getBoundingClientRect();
+        if(!remainderPlaced && pointInRect(dropX, dropY, expandRect(remRect, 20))){
+          placeRemainder(ring);
+          handled = true;
+        }
+      } else {
+        var emptySlot = findEmptySlot();
+        if(emptySlot){
+          var slotRect = emptySlot.getBoundingClientRect();
+          var slotsAreaRect = slotsWrap.getBoundingClientRect();
+          if(pointInRect(dropX, dropY, expandRect(slotsAreaRect, 20))){
+            placeGroup(ring, emptySlot);
+            handled = true;
+          }
+        }
+      }
+
+      if(!handled){
+        ring.style.position = '';
+        ring.style.left = '';
+        ring.style.top = '';
+        ring.style.zIndex = '';
+        originParent.insertBefore(ring, originNext);
+      }
+    });
+  }
+
+  function pointInRect(x, y, r){
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+  function expandRect(r, px){
+    return { left: r.left - px, right: r.right + px, top: r.top - px, bottom: r.bottom + px };
+  }
+  function findEmptySlot(){
+    var slots = slotsWrap.querySelectorAll('.slot:not(.filled)');
+    return slots.length ? slots[0] : null;
+  }
+
+  function placeGroup(ring, slot){
+    ring.style.position = '';
+    ring.style.left = '';
+    ring.style.top = '';
+    ring.style.zIndex = '';
+    ring.classList.add('placed');
+    slot.classList.add('filled');
+    slot.appendChild(ring);
+    placedGroups++;
+    placedCountEl.textContent = placedGroups;
+    updateEquation();
+  }
+
+  function placeRemainder(ring){
+    ring.style.position = '';
+    ring.style.left = '';
+    ring.style.top = '';
+    ring.style.zIndex = '';
+    ring.classList.add('placed');
+    remainderSlot.classList.add('filled');
+    remainderSlot.appendChild(ring);
+    remainderPlaced = true;
+    updateEquation();
+  }
+
+  function updateEquation(){
+    var text = N + ' \u00F7 ' + M + ' = ' + placedGroups;
+    if(remainder > 0){
+      text += remainderPlaced ? ' \u2026\u9918 ' + remainder : (placedGroups > 0 ? ' \u2026' : '');
+    }
+    equationDisplay.textContent = text;
+
+    var done = placedGroups === fullGroups && (remainder === 0 || remainderPlaced);
+    if(done){
+      equationDisplay.classList.add('complete');
+      setTimeout(function(){ equationDisplay.classList.remove('complete'); }, 1400);
+    }
+  }
+
+  function instantSettle(){
+    if(!M || (fullGroups === 0 && remainder === 0)){
+      equationDisplay.textContent = '請先選擇除數並按「分組」，再使用一鍵結算';
+      return;
+    }
+    var rings = Array.prototype.slice.call(groupsArea.querySelectorAll('.group-ring:not(.placed)'));
+    rings.forEach(function(ring){
+      if(ring.dataset.type === 'remainder'){
+        if(!remainderPlaced) placeRemainder(ring);
+      } else {
+        var slot = findEmptySlot();
+        if(slot) placeGroup(ring, slot);
+      }
+    });
+  }
+
+  document.getElementById('new-round-btn').addEventListener('click', newRound);
+  document.getElementById('group-btn').addEventListener('click', doGrouping);
+  document.getElementById('reset-btn').addEventListener('click', resetGrouping);
+  document.getElementById('settle-btn').addEventListener('click', instantSettle);
+
+  newRound();
+})();
+</script>
+</body>
+</html>
